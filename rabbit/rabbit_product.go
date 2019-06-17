@@ -148,7 +148,7 @@ func (p *RabbitProduct)GetType(tTag string)string{
 
 
 //推送消息confirm(有重发机制)
-func (p *RabbitProduct)Push(usePreFix bool,eType string,queue string,exchange string,route string,msg string,durable bool,autoDelete bool)(bool,error){
+func (p *RabbitProduct)PuB(usePreFix bool,eType string,queue string,exchange string,route string,msg string,durable bool,autoDelete bool)(bool,error){
 	if ok,err := p.waitConn();!ok{
 		return ok,err
 	}
@@ -224,7 +224,7 @@ func (p *RabbitProduct) UnsafePush(exchange string,routeKey string,data string) 
 }
 
 //推送消息
-func (p *RabbitProduct)PushMessage(usePreFix bool,eType string,queue string,exchange string,route string,msg string,durable bool,autoDelete bool)(bool,error){
+func (p *RabbitProduct)PuBMessage(usePreFix bool,eType string,queue string,exchange string,route string,msg string,durable bool,autoDelete bool)(bool,error){
 	if ok,err := p.waitConn();!ok{
 		return ok,err
 	}
