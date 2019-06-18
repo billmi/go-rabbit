@@ -31,7 +31,6 @@ var (
 type RabbitProduct struct {
 	Connection    	*amqp.Connection
 	Channel       	*amqp.Channel
-	Ttl           	int
 	isConnected   	bool
 	done          	chan bool
 	notifyClose   	chan *amqp.Error
@@ -45,7 +44,7 @@ type RabbitProduct struct {
 }
 
 //实体
-func NewRabbitProduct(addr string,ttl int,prefix string,sep string,delayExchange string,delayQueue string,delayRoute string) *RabbitProduct {
+func NewRabbitProduct(addr string,prefix string,sep string,delayExchange string,delayQueue string,delayRoute string) *RabbitProduct {
 	rabbitProduct := RabbitProduct{
 		logger: log.New(os.Stdout, "", log.LstdFlags),
 		done:   make(chan bool),
@@ -58,16 +57,16 @@ func NewRabbitProduct(addr string,ttl int,prefix string,sep string,delayExchange
 	rabbitProduct.DelayExchange = delayExchange
 	rabbitProduct.DelayQueue = delayQueue
 	rabbitProduct.DelayRoute = delayRoute
-	go rabbitProduct.handleReconnect(addr,ttl)
+	go rabbitProduct.handleReconnect(addr)
 	return &rabbitProduct
 }
 
 //失败重连
-func (p *RabbitProduct) handleReconnect(addr string,ttl int) {
+func (p *RabbitProduct) handleReconnect(addr string) {
 	for {
 		if p.isConnected == false{
 			log.Println("Attempting to connect")
-			if ok,_  := p.Conn(addr,ttl); !ok  {
+			if ok,_  := p.Conn(addr); !ok  {
 				log.Println("Failed to connect. Retrying...")
 				time.Sleep(reconnectDelay)
 			}
@@ -81,7 +80,7 @@ func (p *RabbitProduct) handleReconnect(addr string,ttl int) {
 }
 
 //连接
-func (p *RabbitProduct)Conn(addr string,ttl int) (bool,error){
+func (p *RabbitProduct)Conn(addr string) (bool,error){
 	conn,err := amqp.Dial(addr)
 	if err != nil{
 		return false,err
@@ -92,7 +91,6 @@ func (p *RabbitProduct)Conn(addr string,ttl int) (bool,error){
 	if err != nil{
 		return false,err
 	}
-	p.Ttl = ttl
 	p.changeConnection(conn,channel)
 	p.isConnected = true
 	log.Println("Connected!")
@@ -108,14 +106,6 @@ func (p *RabbitProduct) changeConnection(connection *amqp.Connection, channel *a
 	p.notifyConfirm = make(chan amqp.Confirmation)
 	p.Channel.NotifyClose(p.notifyClose)
 	p.Channel.NotifyPublish(p.notifyConfirm)
-}
-
-func (p *RabbitProduct)SetTtl(ttl int){
-	p.Ttl = ttl
-}
-
-func (p *RabbitProduct)GetTtl()int{
-	return p.Ttl
 }
 
 func (p *RabbitProduct)GetBool(sign int)bool{
@@ -148,7 +138,7 @@ func (p *RabbitProduct)GetType(tTag string)string{
 
 
 //推送消息confirm(有重发机制)
-func (p *RabbitProduct)PuB(usePreFix bool,eType string,queue string,exchange string,route string,msg string,durable bool,autoDelete bool)(bool,error){
+func (p *RabbitProduct)PuB(usePreFix bool,eType string,queue string,exchange string,route string,msg string,durable bool,autoDelete bool,ttl int,deadLetter bool)(bool,error){
 	if ok,err := p.waitConn();!ok{
 		return ok,err
 	}
@@ -164,7 +154,7 @@ func (p *RabbitProduct)PuB(usePreFix bool,eType string,queue string,exchange str
 		table = amqp.Table{
 			"x-dead-letter-exchange" : prefix + p.DelayExchange,
 			"x-dead-letter-routing-key" : prefix + p.DelayRoute,
-			"x-message-ttl" : p.Ttl,
+			"x-message-ttl" : ttl,
 		}
 		_Exchage = prefix + exchange
 		_Queue = prefix + queue
@@ -174,7 +164,11 @@ func (p *RabbitProduct)PuB(usePreFix bool,eType string,queue string,exchange str
 	if err != nil{
 		return false,err
 	}
-	_, err = channel.QueueDeclare(_Queue, durable, autoDelete, false, false, table)
+	if deadLetter{
+		_, err = channel.QueueDeclare(_Queue, durable, autoDelete, false, false, table)
+	}else {
+		_, err = channel.QueueDeclare(_Queue, durable, autoDelete, false, false,nil)
+	}
 	if err != nil{
 		return false,err
 	}
@@ -223,8 +217,8 @@ func (p *RabbitProduct) UnsafePush(exchange string,routeKey string,data string) 
 	)
 }
 
-//推送消息
-func (p *RabbitProduct)PuBMessage(usePreFix bool,eType string,queue string,exchange string,route string,msg string,durable bool,autoDelete bool)(bool,error){
+//发布消息
+func (p *RabbitProduct)PuBMessage(usePreFix bool,eType string,queue string,exchange string,route string,msg string,durable bool,autoDelete bool,ttl int,deadLetter bool)(bool,error){
 	if ok,err := p.waitConn();!ok{
 		return ok,err
 	}
@@ -239,7 +233,7 @@ func (p *RabbitProduct)PuBMessage(usePreFix bool,eType string,queue string,excha
 		table = amqp.Table{
 			"x-dead-letter-exchange" : prefix + p.DelayExchange,
 			"x-dead-letter-routing-key" : prefix + p.DelayRoute,
-			"x-message-ttl" : p.Ttl,
+			"x-message-ttl" : ttl,
 		}
 		_Exchage = prefix + exchange
 		_Queue = prefix + queue
@@ -249,7 +243,11 @@ func (p *RabbitProduct)PuBMessage(usePreFix bool,eType string,queue string,excha
 	if err != nil{
 		return false,err
 	}
-	_, err = channel.QueueDeclare(_Queue, durable, autoDelete, false, false, table)
+	if deadLetter{
+		_, err = channel.QueueDeclare(_Queue, durable, autoDelete, false, false, table)
+	}else {
+		_, err = channel.QueueDeclare(_Queue, durable, autoDelete, false, false,nil)
+	}
 	if err != nil{
 		return false,err
 	}
