@@ -5,9 +5,8 @@ import (
 )
 
 /*
-	实现断线重连
+	支持断线重连
 	失败重发
-	confirm可以同步设置
     @author : Bill
 */
 func main() {
