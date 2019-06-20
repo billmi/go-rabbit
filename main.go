@@ -22,7 +22,7 @@ func main() {
 		delayQueue = "delay_queue"
 		delayExchange = "delay_exchange"
 		delayRouterKey = "delay_exchange"
-		prefix = "v1_comm"
+		prefix = "v1_prefix"
 		sep = "_"
 		eType = "F"
 		_ttl = 60 * 1000
