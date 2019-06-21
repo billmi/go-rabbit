@@ -68,14 +68,7 @@ func NewRabbitProduct(addr string,ttl int,prefix string,sep string,delayExchange
 
 
 func (p *RabbitProduct) handleReconnect(addr string,ttl int) {
-	for {
-		if  p.isConnected == false || p.Connection.IsClosed() {
-			log.Println("Amqp to connect")
-			if ok,_  := p.Conn(addr,ttl); !ok  {
-				log.Println("Failed to connect. Retrying...")
-			}
-		}
-		time.Sleep(reconnectDelay)
+	go func(){
 		select {
 		case <-p.done:
 			return
@@ -84,6 +77,15 @@ func (p *RabbitProduct) handleReconnect(addr string,ttl int) {
 			p.Connection.Close()
 			p.isConnected = false
 		}
+	}()
+	for {
+		if  p.isConnected == false || p.Connection.IsClosed() {
+			log.Println("Amqp to connect")
+			if ok,_  := p.Conn(addr,ttl); !ok  {
+				log.Println("Failed to connect. Retrying...")
+			}
+		}
+		time.Sleep(reconnectDelay)
 	}
 }
 
