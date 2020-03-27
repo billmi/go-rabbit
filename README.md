@@ -5,13 +5,11 @@ baseFrom : amqp
 go get -u -v github.com/streadway/amqp
 `
 
-#### 实现断线重连,重发机制
-<br/>
-#### 使用前建议简单读下代码!!!
+###### 实现断线重连,重发机制,使用前建议简单读下代码!!!
 
 <br/>
 
-#### 主要功能以下(其他后期可自行扩展)
+###### 主要功能以下(其他后期可自行扩展)
 
 ######  --------PubMessage 支持 direct fanout topic headers 模式
 
